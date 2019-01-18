@@ -1,88 +1,109 @@
-const Discord = require("discord.js")
-const rbx = require("roblox-js")
-exports.run = (Client, message, args) => {
-    let verifiedRole = message.guild.roles.find(r => r.name === "Verified")
-    if (message.member.roles.has(verifiedRole.id)) return message.channel.send("You are already verified.")
+onst Discord = require('discord.js');
+const client = new Discord.Client();
+const db = require("quick.db");
 
-    function makeid() {
-        var text = "";
-        var selectFruit = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😲', '😝', '🤑', '🤯', '😭', '😑', '😶', '😋', '🙆', '👉', '👇', '🧠', '💼', '👮🏻', '👍🏼', '👎🏼', '🐵', '🌨', '☁️', '💧', '🎬', '🎧', '🎮', '🎲', '🏅', '🥇', '🥈', '🥉', '🏆', '🏒', '🍎', '🍫', '🍿', '🍪', '🥛', '🍽', '🍴', '🐑', '🦀', '🐔', '🐭', '🦊', '🐧', '🐞', '🌍', '🌏', '🌕', '🌖', '🌚', '🌝', '🌵', '🎄', '🌲', '☀️', '⛅️', '☔️', '🍋'];
-        text += selectFruit[Math.floor(Math.random() * selectFruit.length)];
-        text += selectFruit[Math.floor(Math.random() * selectFruit.length)];
-        text += selectFruit[Math.floor(Math.random() * selectFruit.length)];
-        text += selectFruit[Math.floor(Math.random() * selectFruit.length)];
-        return text;
+const serverStats = {
+    guildID: 'SERVER ID HERE',
+    ticketCategoryID: 'TICKET CATEGORY ID HERE'
 
-    }
-    const filter = m => m.author.id === message.author.id
-    const collector = message.channel.createMessageCollector(filter, {
-        max: "1",
-        time: "200000"
-    })
-    const robloxEmbed = new Discord.MessageEmbed()
-        .setColor("BLUE")
-        .setTitle("Prompt")
-        .setDescription("❓ What's your ROBLOX username?")
-        .setFooter("This prompt will cancel after 200 seconds.")
-        .setTimestamp()
-    message.channel.send(robloxEmbed)
-
-    collector.on("collect", m => {
-        if (m.content === 'cancel' || m.content === 'Cancel') {
-            message.channel.send('**Cancelled prompt.**')
-            return
-        }
-        rbx.getIdFromUsername(m.content).then(foundId => {
-            const Id = foundId
-            const newString = makeid() + makeid() + makeid() + makeid() + makeid()
-            const foundUsername = new Discord.MessageEmbed()
-                .setColor("BLUE")
-                .setTitle("Prompt")
-                .setDescription("Hello **" + m.content + "**, to verify that you are that user. Please put this in your blurb, or status. \n `" + newString + "`\n\nSay **done** when complete.\nSay **cancel** to cancel. ")
-                .setFooter("Player ID is " + foundId)
-                .setImage("https://cdn.discordapp.com/attachments/498352842818715649/515541774966587392/verify_help.png")
-                .setTimestamp()
-            message.channel.send(foundUsername)
-            message.channel.awaitMessages(mag => {
-                if (mag.content.includes('done') && mag.author.id == message.author.id) {
-                    const fetchingBlurb = new Discord.MessageEmbed()
-                        .setColor("BLUE")
-                        .setTitle("Prompt")
-                        .setDescription("Fetching your emojis, please wait as I am going to fetch it.")
-                        .setFooter("Fetching..")
-                        .setTimestamp()
-                    message.channel.send(fetchingBlurb)
-                    setTimeout(function() {
-                        rbx.getStatus(foundId).then(status => {
-                            console.log(status)
-                            rbx.getBlurb(foundId).then(blurb => {
-                                if (status.includes(newString) || blurb.includes(newString)) {
-                                    const verified = new Discord.MessageEmbed()
-                                        .setColor("GREEN")
-                                        .setTitle("Prompt")
-                                        .setDescription("You have now been verified! Please wait shortly as you are going to recieve the Verified role.")
-                                        .setFooter("Verifying..")
-                                        .setTimestamp()
-                                    message.channel.send(verified)
-                                    let role = message.guild.roles.find(r => r.name === "Verified")
-                                    message.member.roles.add(role)
-                                    console.log()
-                                    message.member.setNickname(m.content)
-                                    let rolew = message.guild.roles.find(r => r.name === "UnVerified")
-                                    message.member.roles.remove(rolew)
-                                    console.log()
-                                } else {
-                                    message.channel.send("Can not find the emojis.")
-                                }
-                            })
-                        }, 5000)
-                    })
-                } else
-                if (mag.content.includes('cancel') && mag.author.id == message.author.id) {
-                    message.channel.send('**Cancelled prompt.**')
-                    return
-                }
-            })
-        })
-    })
 }
+
+
+//It's not a command, just send a DM for bot and... 
+
+client.on('message', async message => {
+    if (message.author.bot) return;
+    if (message.channel.type !== 'text') {
+        let active = await db.fetch(`support_${message.author.id}`);
+        let guild = client.guilds.get(serverStats.guildID);
+        let channel, found = true;
+        try {
+            if (active) client.channels.get(active.channelID)
+                .guild;
+        } catch (e) {
+            found = false;
+        }
+        if (!active || !found) {
+            active = {};
+            channel = await guild.createChannel(`${message.author.username}-${message.author.discriminator}`)
+            channel.setParent(serverStats.ticketCategoryID)
+            channel.setTopic(`/complete to close the ticket | Support for ${message.author.tag} | ID: ${message.author.id}`)
+
+            channel.overwritePermissions("465147579517370368", { //Role id (when someone join my server get this role with id <<, i dont know how to change it for @everyone. This will prevent users to see the channel, only admins will see!
+                VIEW_CHANNEL: false,
+                SEND_MESSAGES: false,
+                ADD_REACTIONS: false
+            });
+
+
+
+            let author = message.author;
+            const newChannel = new Discord.RichEmbed()
+                .setColor('RANDOM')
+                .setAuthor(author.tag, author.avatarURL)
+                .setFooter('Support Ticket Created!')
+                .addField('User', author)
+                .addField('ID', author.id)
+            await channel.send(newChannel);
+            const newTicket = new Discord.RichEmbed()
+                .setColor('RANDOM')
+                .setAuthor(`Hello, ${author.username}`, author.avatarURL)
+                .setFooter('Support Ticket Created!')
+            await author.send(newTicket);
+            active.channelID = channel.id;
+            active.targetID = author.id;
+        }
+        channel = client.channels.get(active.channelID);
+        const dm = new Discord.RichEmbed()
+            .setColor('RANDOM')
+            .setAuthor(`Thank you, ${message.author.username}`, message.author.avatarURL)
+            .setFooter(`Your message has been sent - A staff member will be in contact soon.`)
+        await message.author.send(dm);
+        if (message.content.startsWith(prefix + 'complete')) return;
+        const embed5 = new Discord.RichEmbed()
+            .setColor('RANDOM')
+            .setAuthor(message.author.tag, message.author.avatarURL)
+            .setDescription(message.content)
+            .setFooter(`Message Received - ${message.author.tag}`)
+        await channel.send(embed5);
+        db.set(`support_${message.author.id}`, active);
+        db.set(`supportChannel_${channel.id}`, message.author.id);
+        return;
+    }
+    let support = await db.fetch(`supportChannel_${message.channel.id}`);
+    if (support) {
+        support = await db.fetch(`support_${support}`);
+        let supportUser = client.users.get(support.targetID);
+        if (!supportUser) return message.channel.delete();
+        if (message.content.toLowerCase() === '/complete') {
+            const complete = new Discord.RichEmbed()
+                .setColor('RANDOM')
+                .setAuthor(`Hey, ${supportUser.tag}`, supportUser.avatarURL)
+                .setFooter('Ticket Closed -- Nebulous')
+                .setDescription('*Your ticket has been marked as complete. If you wish to reopen it, or create a new one, please send a message to the bot.*')
+            supportUser.send(complete);
+            message.channel.delete();
+            db.delete(`support_${support.targetID}`);
+            let inEmbed = new Discord.RichEmbed()
+                .setTitle('Ticket Closed!')
+                .addField('Support User', `${supportUser.tag}`)
+                .addField('Closer', message.author.tag)
+                .setColor('RANDOM')
+            const staffChannel = client.channels.get('489156917092941826'); //Create a log channel and put id here
+            staffChannel.send(inEmbed);
+        }
+        const embed4 = new Discord.RichEmbed()
+            .setColor('RANDOM')
+            .setAuthor(message.author.tag, message.author.avatarURL)
+            .setFooter(`Message Received - Nebulous`)
+            .setDescription(message.content)
+        client.users.get(support.targetID)
+            .send(embed4);
+        message.delete({
+            timeout: 10000
+        });
+        embed4.setFooter(`Message Sent -- ${supportUser.tag}`)
+            .setDescription(message.content);
+        return message.channel.send(embed4);
+    }
+});
